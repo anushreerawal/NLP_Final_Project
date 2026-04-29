@@ -6,3 +6,6 @@ from typing import List, Dict, Tuple
 import numpy as np
 
 
+STOP_WORDS = {
+    "i", "me", "myself", "we", "our", "ours", "ourselves", "you", "your",
+}
