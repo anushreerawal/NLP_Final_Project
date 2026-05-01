@@ -187,7 +187,106 @@ class EmbeddingModel:
         )
 
         return embeddings.astype(np.float32)
+    
+class VectorIndex:
 
+    def __init__(self, dim:int):
+        self.dim = dim
+        self.index = faiss.IndexFlatIP(dim)
+        self.passages: List[LegalPassage] = []
+    
+    def build(self, passages: List[LegalPassage], embeddings:np.ndarray):
+        if len(passages) != embeddings.shape[0]:
+            raise ValueError("Number of passages does not match number of embeddings.")
+        
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True) + 1e-9
+        normalized_embeddings = embeddings / norms
 
+        self.passages = passages
+        self.index.add(normalized_embeddings)
+    
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[LegalPassage]:
+        query = query_embedding.reshape(1, -1).astype(np.float32)
+        query = query / (np.linalg.norm(query) + 1e-9)
+
+        scores, indicies = self.index.search(query, top_k)
+
+        results = []
+
+        for score, idx in zip(scores[0], indicies[0]):
+            if idx == -1:
+                continue
+
+            passage = self.passages[idx]
+            passage.score = float(score)
+            results.append(passage)
+        
+        return results
+    
+class AnswerGenerator:
+    def generate(self, question: str, passages: List[LegalPassage]) -> str:
+        if not passage:
+            return "No relevant legal passage was found."
+        
+        top_passage = passages[0]
+
+        return (
+            "Based on the retrieved passage from ContractNLI, the relevant text says:\n\n"
+            f"{top_pssage.text[:700]}"
+        )
+
+class LegalRAGPipeline:
+    def __init__(
+        self,
+        sbert_model: str = "all-MiniLM-L6-v2", 
+        top_k: int = 5, 
+        max_passages: int = 500, 
+    ):
+        self.top_k = top_k, 
+        self.loader = ContractNLILoader(max_passages=max_passages)
+        self.embedder = EmbeddingModel(sbert_model)
+        self.index = VectorIndex(self.embedder.dim)
+        self.generator = AnswerGenerator()
+        self.built = False
+    
+    def build_index(self):
+        corpus = self.loader.load_corpus()
+        texts = [passage.text for passage in corpus]
+        embeddings = self.embedder.encode(texts)
+
+        self.index.build(corpus, embeddings)
+        self.built = True
+
+    def answer(self, question: str) -> RAGResult:
+        if not self.built:
+            self.build_index()
+        
+        start_time = time.time()
+
+        question_embedding = self.embedder.encode([question])[0]
+        retrieved_passages = self.index.search(question_embedding, self.top_k)
+        generated_answer = self.generator.generate(question, retrieved_passages)
+
+        latency_ms = (time.time() - start_time) * 1000
+
+        return RAGResult(
+            question=question, 
+            retrieved_passages=retrieved_passages, 
+            generated_answer=generated_answer,
+            latency_ms=latency_ms,
+        )
+    
+    if __name__ == "__main__":
+        pipeline = LegalRAGPipeline(
+            sbert_model="all-MiniLM-L6-v2",
+            top_k=3,
+            max_passages=500,
+        )
+
+        pipeline.build_index()
+
+        question = "Can the recieving party disclose confidential information to third parties?"
+        result = pipeline.answer(question)
+        
 
 
