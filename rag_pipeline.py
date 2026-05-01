@@ -178,7 +178,7 @@ class EmbeddingModel:
         self.model = SentenceTransformer(model_name)
         self.dim = self.model.get_sentence_embedding_dimension()
     
-    def encode(self, text: List[str], batch_size: int = 32) -> np.ndarray:
+    def encode(self, texts: List[str], batch_size: int = 32) -> np.ndarray:
         embeddings = self.model.encode(
             texts,
             batch_size=batch_size, 
