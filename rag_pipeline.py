@@ -57,12 +57,23 @@ class ContractNLILoader:
     def __init__(self, max_passages: int = 500):
         self.max_passages = max_passages
     
+
     def load_corpus(self) -> List[LegalPassage]:
-        print("downloading ContractNLI dataset...")
-    
-        with urllib.request.urlopen(self.URL, timeout=60) as response:
-            data = response.read()
-        
+        import os
+        cache_path = "contract_nli_cache.zip"
+
+        if os.path.exists(cache_path):
+            print("[INFO] Loading ContractNLI from local cache...")
+            with open(cache_path, "rb") as f:
+                data = f.read()
+        else:
+            print("[INFO] Downloading ContractNLI dataset (one-time, ~30MB)...")
+            with urllib.request.urlopen(self.URL, timeout=120) as response:
+                data = response.read()
+            with open(cache_path, "wb") as f:
+                f.write(data)
+            print(f"[INFO] Saved to cache ({len(data)/1024/1024:.1f}MB)")
+
         passages = []
 
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
@@ -73,18 +84,21 @@ class ContractNLILoader:
                 raise ValueError("No JSON file found in ContractNLI zip.")
 
             train_file = next(
-                (name for name in json_files if "train" in name.lower()), 
+                (name for name in json_files if "train" in name.lower()),
                 json_files[0]
             )
+            print(f"[INFO] Using: {train_file}")
 
             with zf.open(train_file) as f:
                 corpus = json.load(f)
-            
+
         docs = self._extract_documents(corpus)
 
         if not docs:
             raise ValueError("Could not find documents inside ContractNLI data.")
-        
+
+        print(f"[INFO] Found {len(docs)} documents, chunking...")
+
         for doc_idx, doc in enumerate(docs):
             if len(passages) >= self.max_passages:
                 break
@@ -99,19 +113,20 @@ class ContractNLILoader:
             for chunk_idx, chunk in enumerate(chunks):
                 passages.append(
                     LegalPassage(
-                        passage_id=f"contract_{doc_idx}_{chunk_idx}", 
-                        text = chunk,
-                        source="ContractNLI", 
+                        passage_id=f"contract_{doc_idx}_{chunk_idx}",
+                        text=chunk,
+                        source="ContractNLI",
                         case_name=f"Contract Document {doc_idx}",
                     )
                 )
 
                 if len(passages) >= self.max_passages:
                     break
-            
+
         if not passages:
             raise ValueError("No passages were created from ContractNLI.")
-    
+
+        print(f"[INFO] Loaded {len(passages)} passages from ContractNLI.")
         return passages
 
     @staticmethod
@@ -176,7 +191,7 @@ class ContractNLILoader:
 class EmbeddingModel:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.model = SentenceTransformer(model_name)
-        self.dim = self.model.get_sentence_embedding_dimension()
+        self.dim = self.model.get_embedding_dimension()
     
     def encode(self, texts: List[str], batch_size: int = 32) -> np.ndarray:
         embeddings = self.model.encode(
@@ -287,8 +302,14 @@ if __name__ == "__main__":
 
     pipeline.build_index()
 
-    question = "Can the recieving party disclose confidential information to third parties?"
+    question = "Can the receiving party disclose confidential information to third parties?"
     result = pipeline.answer(question)
+
+    print(f"\nQuestion: {result.question}")
+    print(f"\nAnswer:\n{result.generated_answer}")
+    print(f"\nLatency: {result.latency_ms:.0f}ms")
+    print(f"\nTop retrieved passage (score={result.retrieved_passages[0].score:.3f}):")
+    print(result.retrieved_passages[0].text[:300])
         
 
 
