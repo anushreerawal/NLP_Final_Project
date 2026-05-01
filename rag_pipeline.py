@@ -35,7 +35,7 @@ structures
 class LegalPassage:
     passage_id: str
     text: str
-    source str
+    source: str
     case_name: str = ""
     date: str =  ""
     score: float = 0.0
@@ -47,72 +47,72 @@ class RAGResult:
     generated_answer: str
     retrieval_score: int
     answer_score: int
-    latency_mas: float = 0.0
+    latency_ms: float = 0.0
 
 # Dataset loader for ContractNLI
 
 class ContractNLILoader:
     URL = "https://stanfordnlp.github.io/contract-nli/resources/contract-nli.zip"
 
-    def __init__(Self, max_passages: int = 500):
+    def __init__(self, max_passages: int = 500):
         self.max_passages = max_passages
     
     def load_corpus(self) -> List[LegalPassage]:
         print("downloading ContractNLI dataset...")
     
-    with urllib.request.urlopen(self.URL, timeout=60) as response:
-        data = response.read()
-    
-    passages = []
-
-    with zipfile.ZipFile(io.BytesIO(data)) as zf:
-        names = zf.namelist()
-        json_files = [name for name in names if name.endswith(".json")]
-
-        if not json_files:
-            raise ValueError("No JSON file found in ContractNLI zip.")
-
-        train_file = next(
-            (name for name in json_files if "train" in name.lower()), 
-            json_files[0]
-        )
-
-        with zf.open(train_file) as f:
-            corpus = json.load(f)
+        with urllib.request.urlopen(self.URL, timeout=60) as response:
+            data = response.read()
         
-    docs = self._extract_documents(corpus)
+        passages = []
 
-    if not docs:
-        raise ValueError("Could not find documents inside ContractNLI data.")
-    
-    for doc_idx, dox in enumerate(docs):
-        if len(passages) >= self.max_passages:
-            break
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            names = zf.namelist()
+            json_files = [name for name in names if name.endswith(".json")]
 
-        text = self._extract_text(doc)
+            if not json_files:
+                raise ValueError("No JSON file found in ContractNLI zip.")
 
-        if not text.strip():
-            continue
-
-        chunks = self._chunk_text(text, chunk_size=300, overlap=50)
-
-        for chunk_idx, chunk in enumerate(chunks):
-            passages.append(
-                LegalPassage(
-                    passage_id=f"contract_{doc_idx}_{chunk_idx}", 
-                    text = chunk,
-                    source="ContractNLI", 
-                    case_namef"Contract Dcoument {doc_idx}",
-                )
+            train_file = next(
+                (name for name in json_files if "train" in name.lower()), 
+                json_files[0]
             )
 
+            with zf.open(train_file) as f:
+                corpus = json.load(f)
+            
+        docs = self._extract_documents(corpus)
+
+        if not docs:
+            raise ValueError("Could not find documents inside ContractNLI data.")
+        
+        for doc_idx, doc in enumerate(docs):
             if len(passages) >= self.max_passages:
                 break
-        
-    if not passages:
-        raise ValueError("No passages were created from ContractNLI.")
+
+            text = self._extract_text(doc)
+
+            if not text.strip():
+                continue
+
+            chunks = self._chunk_text(text, chunk_size=300, overlap=50)
+
+            for chunk_idx, chunk in enumerate(chunks):
+                passages.append(
+                    LegalPassage(
+                        passage_id=f"contract_{doc_idx}_{chunk_idx}", 
+                        text = chunk,
+                        source="ContractNLI", 
+                        case_name=f"Contract Document {doc_idx}",
+                    )
+                )
+
+                if len(passages) >= self.max_passages:
+                    break
+            
+        if not passages:
+            raise ValueError("No passages were created from ContractNLI.")
     
-    return passages
+        return passages
 
 @staticmethod
 def _extract_documents(corpus):
@@ -130,7 +130,7 @@ def _extract_documents(corpus):
     return []
 
 @staticmethod
-def _tract_text(doc):
+def _extract_text(doc):
     if isinstance(doc, str):
         return doc
     
@@ -175,7 +175,7 @@ def _chunk_text(text:str, chunk_size: int = 300, overlap: int = 50) -> List[str]
 
 class EmbeddingModel:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-        self.model = sentenceTransfomer(model_name)
+        self.model = SentenceTransfomer(model_name)
         self.dim = self.model.get_sentence_embedding_dimension()
     
     def encode(self, text: List[str], batch_size: int = 32) -> np.ndarray:
@@ -242,7 +242,7 @@ class LegalRAGPipeline:
         top_k: int = 5, 
         max_passages: int = 500, 
     ):
-        self.top_k = top_k, 
+        self.top_k = top_k
         self.loader = ContractNLILoader(max_passages=max_passages)
         self.embedder = EmbeddingModel(sbert_model)
         self.index = VectorIndex(self.embedder.dim)
@@ -276,17 +276,17 @@ class LegalRAGPipeline:
             latency_ms=latency_ms,
         )
     
-    if __name__ == "__main__":
-        pipeline = LegalRAGPipeline(
-            sbert_model="all-MiniLM-L6-v2",
-            top_k=3,
-            max_passages=500,
-        )
+if __name__ == "__main__":
+    pipeline = LegalRAGPipeline(
+        sbert_model="all-MiniLM-L6-v2",
+        top_k=3,
+        max_passages=500,
+    )
 
-        pipeline.build_index()
+    pipeline.build_index()
 
-        question = "Can the recieving party disclose confidential information to third parties?"
-        result = pipeline.answer(question)
+    question = "Can the recieving party disclose confidential information to third parties?"
+    result = pipeline.answer(question)
         
 
 
