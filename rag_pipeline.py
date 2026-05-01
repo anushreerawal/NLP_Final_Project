@@ -273,6 +273,8 @@ class LegalRAGPipeline:
             question=question, 
             retrieved_passages=retrieved_passages, 
             generated_answer=generated_answer,
+            retrieval_score=0,
+            answer_score=0,
             latency_ms=latency_ms,
         )
     
