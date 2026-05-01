@@ -225,14 +225,14 @@ class VectorIndex:
     
 class AnswerGenerator:
     def generate(self, question: str, passages: List[LegalPassage]) -> str:
-        if not passage:
+        if not passages:
             return "No relevant legal passage was found."
         
         top_passage = passages[0]
 
         return (
             "Based on the retrieved passage from ContractNLI, the relevant text says:\n\n"
-            f"{top_pssage.text[:700]}"
+            f"{top_passage.text[:700]}"
         )
 
 class LegalRAGPipeline:
