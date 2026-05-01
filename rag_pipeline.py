@@ -114,64 +114,64 @@ class ContractNLILoader:
     
         return passages
 
-@staticmethod
-def _extract_documents(corpus):
-    if isinstance(corpus, list):
-        return corpus
-    
-    if isinstance(corpus, dict):
-        if "documents" in corpus:
-            return corpus["documents"]
-        if "data" in corpus:
-            return corpus["data"]
-        if "premises" in corpus:
-            return corpus["premises"]
-    
-    return []
-
-@staticmethod
-def _extract_text(doc):
-    if isinstance(doc, str):
-        return doc
-    
-    if not isinstance(doc, dict):
-        return ""
-    
-    possible_keys = [
-        "text",
-        "contract_text", 
-        "premise", 
-        "document", 
-        "content",
-    ]
-
-    for key in possible_keys:
-        if key in doc and isinstance(doc[key], str):
-            return doc[key]
-
-    return ""
-
-@staticmethod
-def _chunk_text(text:str, chunk_size: int = 300, overlap: int = 50) -> List[str]:
-    words = text.split()
-
-    if not words:
+    @staticmethod
+    def _extract_documents(corpus):
+        if isinstance(corpus, list):
+            return corpus
+        
+        if isinstance(corpus, dict):
+            if "documents" in corpus:
+                return corpus["documents"]
+            if "data" in corpus:
+                return corpus["data"]
+            if "premises" in corpus:
+                return corpus["premises"]
+        
         return []
 
-    chunks = []
-    start = 0
-
-    while start < len(words):
-        end = min(start + chunk_size, len(words))
-        chunk = " ".join(words[start:end])
-        chunks.append(chunk)
+    @staticmethod
+    def _extract_text(doc):
+        if isinstance(doc, str):
+            return doc
         
-        if end == len(words):
-            break
+        if not isinstance(doc, dict):
+            return ""
+        
+        possible_keys = [
+            "text",
+            "contract_text", 
+            "premise", 
+            "document", 
+            "content",
+        ]
 
-        start += chunk_size - overlap
+        for key in possible_keys:
+            if key in doc and isinstance(doc[key], str):
+                return doc[key]
 
-    return chunks
+        return ""
+
+    @staticmethod
+    def _chunk_text(text:str, chunk_size: int = 300, overlap: int = 50) -> List[str]:
+        words = text.split()
+
+        if not words:
+            return []
+
+        chunks = []
+        start = 0
+
+        while start < len(words):
+            end = min(start + chunk_size, len(words))
+            chunk = " ".join(words[start:end])
+            chunks.append(chunk)
+            
+            if end == len(words):
+                break
+
+            start += chunk_size - overlap
+
+        return chunks
 
 class EmbeddingModel:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
