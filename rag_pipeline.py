@@ -175,7 +175,7 @@ def _chunk_text(text:str, chunk_size: int = 300, overlap: int = 50) -> List[str]
 
 class EmbeddingModel:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-        self.model = SentenceTransfomer(model_name)
+        self.model = SentenceTransformer(model_name)
         self.dim = self.model.get_sentence_embedding_dimension()
     
     def encode(self, text: List[str], batch_size: int = 32) -> np.ndarray:
